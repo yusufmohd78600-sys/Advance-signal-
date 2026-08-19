@@ -5,15 +5,50 @@ import numpy as np
 
 # Page Configuration
 st.set_page_config(page_title="Advanced Trading Signals", layout="wide")
-st.title("📈 Advanced Smart Money Concept (SMC) Trading Signals")
+st.title("📈 SMC Signal Engine: Equity, FNO & MCX")
 
-# Sidebar for Inputs
-st.sidebar.header("User Inputs")
-symbol = st.sidebar.text_input("Enter Ticker Symbol (e.g., ^NSEI, RELIANCE.NS, AAPL, BTC-USD)", "^NSEI")
+# Market Options Presets
+MARKET_PRESETS = {
+    "Indices / FNO": {
+        "Nifty 50 Index": "^NSEI",
+        "Bank Nifty Index": "^NSEBANK",
+        "Nifty Financial (FINNIFTY)": "NIFTY_FIN_SERVICE.NS",
+        "Midcap Nifty": "NIFTY_MID_SELECT.NS"
+    },
+    "Equity / Stocks": {
+        "Reliance Industries": "RELIANCE.NS",
+        "TCS": "TCS.NS",
+        "HDFC Bank": "HDFCBANK.NS",
+        "ICICI Bank": "ICICIBANK.NS",
+        "Infosys": "INFY.NS",
+        "Tata Motors": "TATAMOTORS.NS",
+        "State Bank of India": "SBIN.NS"
+    },
+    "MCX Commodities": {
+        "Gold Futures": "GC=F",
+        "Silver Futures": "SI=F",
+        "Crude Oil Futures": "CL=F",
+        "Natural Gas Futures": "NG=F",
+        "Copper Futures": "HG=F"
+    }
+}
+
+# Sidebar Controls
+st.sidebar.header("🎯 Market Selection")
+category = st.sidebar.selectbox("Market Category Choose Karein", list(MARKET_PRESETS.keys()))
+
+preset_options = MARKET_PRESETS[category]
+selected_preset_name = st.sidebar.selectbox("Symbol Choose Karein", list(preset_options.keys()))
+default_symbol = preset_options[selected_preset_name]
+
+# Custom Ticker Input Box
+symbol = st.sidebar.text_input("Custom Yahoo Ticker (Optional)", value=default_symbol, help="MCX/Futures ke liye =F aur Indian Equity ke liye .NS use hota hai.")
+
+st.sidebar.header("⚙️ Strategy Parameters")
 timeframe = st.sidebar.selectbox("Select Timeframe", ["1m", "2m", "5m", "15m", "30m", "1h", "1d"], index=2)
 period = st.sidebar.selectbox("Select Period", ["1d", "5d", "1mo", "3mo", "6mo"], index=1)
 
-# 1. Market Structure & Liquidity Detection Engine
+# 1. SMC Structure Analysis
 def analyze_smc_structure(df):
     df['Swing_High'] = df['High'][(df['High'] > df['High'].shift(1)) & (df['High'] > df['High'].shift(-1))]
     df['Swing_Low'] = df['Low'][(df['Low'] < df['Low'].shift(1)) & (df['Low'] < df['Low'].shift(-1))]
@@ -38,7 +73,7 @@ def analyze_smc_structure(df):
         'recent_low': recent_low
     }
 
-# 2. Complete Trade Decision Engine
+# 2. Trade Decision Logic
 def generate_smc_trade(df):
     smc = analyze_smc_structure(df)
     current_price = df['Close'].iloc[-1]
@@ -49,7 +84,7 @@ def generate_smc_trade(df):
         'entry': 0.0,
         'sl': 0.0,
         'target': 0.0,
-        'reason': 'Waiting for Liquidity Sweep / Structure Break'
+        'reason': 'Liquidity Sweep ya Structure Break ka wait karein.'
     }
     
     if smc['sell_sweep'] or smc['bos_bullish']:
@@ -59,12 +94,12 @@ def generate_smc_trade(df):
         target = entry + (risk * 2)
         
         trade = {
-            'signal': 'BUY ENTRY / CALL',
+            'signal': 'BUY ENTRY / CALL (CE)',
             'type': 'BULLISH',
             'entry': round(float(entry), 2),
             'sl': round(float(sl), 2),
             'target': round(float(target), 2),
-            'reason': 'Liquidity Swept below Key Low + Structure Confirmation'
+            'reason': 'Liquidity Swept below Key Low + Bullish Confirmation'
         }
         
     elif smc['buy_sweep'] or smc['bos_bearish']:
@@ -74,28 +109,27 @@ def generate_smc_trade(df):
         target = entry - (risk * 2)
         
         trade = {
-            'signal': 'SELL ENTRY / PUT',
+            'signal': 'SELL ENTRY / PUT (PE)',
             'type': 'BEARISH',
             'entry': round(float(entry), 2),
             'sl': round(float(sl), 2),
             'target': round(float(target), 2),
-            'reason': 'Liquidity Swept above Key High + Structure Breakdown'
+            'reason': 'Liquidity Swept above Key High + Bearish Confirmation'
         }
         
     return trade
 
-# Main Execution Flow
-if st.sidebar.button("Analyze & Fetch Signal"):
-    with st.spinner("Fetching Data and Analyzing Market Structure..."):
+# Execution Trigger
+if st.sidebar.button("Analyze Market & Generate Signal"):
+    with st.spinner(f"Fetching Live Data for {symbol}..."):
         try:
             df = yf.download(symbol, period=period, interval=timeframe)
             if df.empty:
-                st.error("No data found! Please check the Ticker Symbol or Timeframe.")
+                st.error("Data nahi mila! Symbol/Timeframe check karein.")
             else:
                 trade_setup = generate_smc_trade(df)
                 
-                # Signal Output Cards
-                st.subheader(f"Analysis Results for {symbol}")
+                st.subheader(f"📊 Analysis Output: {selected_preset_name} (`{symbol}`)")
                 
                 if trade_setup['type'] == 'BULLISH':
                     st.success(f"### Signal: {trade_setup['signal']}")
@@ -110,13 +144,13 @@ if st.sidebar.button("Analyze & Fetch Signal"):
                 col3.metric("Stop Loss (SL)", trade_setup['sl'])
                 col4.metric("Target (1:2 R&R)", trade_setup['target'])
                 
-                st.info(f"**Reason:** {trade_setup['reason']}")
+                st.info(f"**Trade Reason:** {trade_setup['reason']}")
                 
-                # Chart Display
-                st.subheader("Price Chart")
+                # Dynamic Price Chart
+                st.subheader("Price Movement Chart")
                 st.line_chart(df['Close'])
                 
         except Exception as e:
-            st.error(f"Error fetching data: {e}")
+            st.error(f"Data Fetching Error: {e}")
 else:
-    st.info("Sidebar me symbol select karke **Analyze & Fetch Signal** button par click karein.")
+    st.info("👈 Sidebar se Category (Equity/FNO/MCX) select karein aur **Analyze Market** button dabayein.")
