@@ -6,19 +6,21 @@ import time
 
 # Page Configuration
 st.set_page_config(page_title="Advanced Trading Signals", layout="wide")
-st.title("📈 SMC Signal Engine: Equity, FNO & MCX")
-
-# Sidebar Controls
-st.sidebar.header("🎯 Market Selection")
+st.title("📈 SMC Signal Engine: NSE, BSE FNO & MCX")
 
 # Auto Refresh Switch
 auto_refresh = st.sidebar.checkbox("Auto Refresh Data (Every 10s)", value=True)
 
+# Market Options Presets Including BSE FNO
 MARKET_PRESETS = {
-    "Indices / FNO": {
+    "BSE FNO & Indices": {
+        "Sensex Index / Options": "^BSESN",
+        "BSE BANKEX": "^NSEBANKEX"
+    },
+    "NSE FNO & Indices": {
         "Nifty 50 Index": "^NSEI",
         "Bank Nifty Index": "^NSEBANK",
-        "Nifty Financial (FINNIFTY)": "NIFTY_FIN_SERVICE.NS",
+        "FinNifty Index": "NIFTY_FIN_SERVICE.NS",
         "Midcap Nifty": "NIFTY_MID_SELECT.NS"
     },
     "Equity / Stocks": {
@@ -27,18 +29,18 @@ MARKET_PRESETS = {
         "HDFC Bank": "HDFCBANK.NS",
         "ICICI Bank": "ICICIBANK.NS",
         "Infosys": "INFY.NS",
-        "Tata Motors": "TATAMOTORS.NS",
         "State Bank of India": "SBIN.NS"
     },
     "MCX Commodities": {
         "Gold Futures": "GC=F",
         "Silver Futures": "SI=F",
         "Crude Oil Futures": "CL=F",
-        "Natural Gas Futures": "NG=F",
-        "Copper Futures": "HG=F"
+        "Natural Gas Futures": "NG=F"
     }
 }
 
+# Sidebar Controls
+st.sidebar.header("🎯 Market Selection")
 category = st.sidebar.selectbox("Market Category Choose Karein", list(MARKET_PRESETS.keys()))
 preset_options = MARKET_PRESETS[category]
 selected_preset_name = st.sidebar.selectbox("Symbol Choose Karein", list(preset_options.keys()))
