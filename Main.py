@@ -2,12 +2,18 @@ import streamlit as st
 import yfinance as yf
 import pandas as pd
 import numpy as np
+import time
 
 # Page Configuration
 st.set_page_config(page_title="Advanced Trading Signals", layout="wide")
 st.title("📈 SMC Signal Engine: Equity, FNO & MCX")
 
-# Market Options Presets
+# Sidebar Controls
+st.sidebar.header("🎯 Market Selection")
+
+# Auto Refresh Switch
+auto_refresh = st.sidebar.checkbox("Auto Refresh Data (Every 10s)", value=True)
+
 MARKET_PRESETS = {
     "Indices / FNO": {
         "Nifty 50 Index": "^NSEI",
@@ -33,21 +39,16 @@ MARKET_PRESETS = {
     }
 }
 
-# Sidebar Controls
-st.sidebar.header("🎯 Market Selection")
 category = st.sidebar.selectbox("Market Category Choose Karein", list(MARKET_PRESETS.keys()))
-
 preset_options = MARKET_PRESETS[category]
 selected_preset_name = st.sidebar.selectbox("Symbol Choose Karein", list(preset_options.keys()))
 default_symbol = preset_options[selected_preset_name]
 
-# Custom Ticker Input Box
 symbol = st.sidebar.text_input("Custom Yahoo Ticker (Optional)", value=default_symbol)
 
 st.sidebar.header("⚙️ Strategy Parameters")
 timeframe = st.sidebar.selectbox("Select Timeframe", ["1m", "5m", "15m", "30m", "1h", "1d"], index=1)
 
-# Period map to avoid Yahoo Finance data empty error
 period_map = {
     "1m": "1d",
     "5m": "5d",
@@ -129,43 +130,38 @@ def generate_smc_trade(df):
         
     return trade
 
-# Execution Trigger
-if st.sidebar.button("Analyze Market & Generate Signal"):
-    with st.spinner(f"Fetching Live Data for {symbol}..."):
-        try:
-            df = yf.download(symbol, period=selected_period, interval=timeframe)
-            
-            # Handle MultiIndex columns from yfinance
-            if isinstance(df.columns, pd.MultiIndex):
-                df.columns = df.columns.get_level_values(0)
-                
-            if df.empty:
-                st.error("Data nahi mila! Symbol/Timeframe check karein.")
-            else:
-                trade_setup = generate_smc_trade(df)
-                
-                st.subheader(f"📊 Analysis Output: {selected_preset_name} (`{symbol}`)")
-                
-                if trade_setup['type'] == 'BULLISH':
-                    st.success(f"### Signal: {trade_setup['signal']}")
-                elif trade_setup['type'] == 'BEARISH':
-                    st.error(f"### Signal: {trade_setup['signal']}")
-                else:
-                    st.warning(f"### Signal: {trade_setup['signal']}")
-                
-                col1, col2, col3, col4 = st.columns(4)
-                col1.metric("Current Price", round(float(df['Close'].iloc[-1]), 2))
-                col2.metric("Entry Price", trade_setup['entry'])
-                col3.metric("Stop Loss (SL)", trade_setup['sl'])
-                col4.metric("Target (1:2 R&R)", trade_setup['target'])
-                
-                st.info(f"**Trade Reason:** {trade_setup['reason']}")
-                
-                # Dynamic Price Chart
-                st.subheader("Price Movement Chart")
-                st.line_chart(df['Close'])
-                
-        except Exception as e:
-            st.error(f"Data Fetching Error: {e}")
-else:
-    st.info("👈 Left top corner me **>>** arrow par click karke Sidebar kholein, Symbol select karein aur **Analyze Market** button dabayein.")
+# Main Display Logic
+try:
+    df = yf.download(symbol, period=selected_period, interval=timeframe)
+    if isinstance(df.columns, pd.MultiIndex):
+        df.columns = df.columns.get_level_values(0)
+        
+    if not df.empty:
+        trade_setup = generate_smc_trade(df)
+        
+        st.subheader(f"📊 Live Data: {selected_preset_name} (`{symbol}`)")
+        
+        if trade_setup['type'] == 'BULLISH':
+            st.success(f"### Signal: {trade_setup['signal']}")
+        elif trade_setup['type'] == 'BEARISH':
+            st.error(f"### Signal: {trade_setup['signal']}")
+        else:
+            st.warning(f"### Signal: {trade_setup['signal']}")
+        
+        col1, col2, col3, col4 = st.columns(4)
+        col1.metric("Current Price", round(float(df['Close'].iloc[-1]), 2))
+        col2.metric("Entry Price", trade_setup['entry'])
+        col3.metric("Stop Loss (SL)", trade_setup['sl'])
+        col4.metric("Target (1:2 R&R)", trade_setup['target'])
+        
+        st.info(f"**Trade Reason:** {trade_setup['reason']}")
+        
+        st.subheader("Price Movement Chart")
+        st.line_chart(df['Close'])
+except Exception as e:
+    st.error(f"Data Fetching Error: {e}")
+
+# Auto Refresh loop
+if auto_refresh:
+    time.sleep(10)
+    st.rerun()
