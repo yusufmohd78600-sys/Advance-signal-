@@ -42,11 +42,21 @@ selected_preset_name = st.sidebar.selectbox("Symbol Choose Karein", list(preset_
 default_symbol = preset_options[selected_preset_name]
 
 # Custom Ticker Input Box
-symbol = st.sidebar.text_input("Custom Yahoo Ticker (Optional)", value=default_symbol, help="MCX/Futures ke liye =F aur Indian Equity ke liye .NS use hota hai.")
+symbol = st.sidebar.text_input("Custom Yahoo Ticker (Optional)", value=default_symbol)
 
 st.sidebar.header("⚙️ Strategy Parameters")
-timeframe = st.sidebar.selectbox("Select Timeframe", ["1m", "2m", "5m", "15m", "30m", "1h", "1d"], index=2)
-period = st.sidebar.selectbox("Select Period", ["1d", "5d", "1mo", "3mo", "6mo"], index=1)
+timeframe = st.sidebar.selectbox("Select Timeframe", ["1m", "5m", "15m", "30m", "1h", "1d"], index=1)
+
+# Period map to avoid Yahoo Finance data empty error
+period_map = {
+    "1m": "1d",
+    "5m": "5d",
+    "15m": "5d",
+    "30m": "1mo",
+    "1h": "1mo",
+    "1d": "6mo"
+}
+selected_period = period_map[timeframe]
 
 # 1. SMC Structure Analysis
 def analyze_smc_structure(df):
@@ -123,7 +133,12 @@ def generate_smc_trade(df):
 if st.sidebar.button("Analyze Market & Generate Signal"):
     with st.spinner(f"Fetching Live Data for {symbol}..."):
         try:
-            df = yf.download(symbol, period=period, interval=timeframe)
+            df = yf.download(symbol, period=selected_period, interval=timeframe)
+            
+            # Handle MultiIndex columns from yfinance
+            if isinstance(df.columns, pd.MultiIndex):
+                df.columns = df.columns.get_level_values(0)
+                
             if df.empty:
                 st.error("Data nahi mila! Symbol/Timeframe check karein.")
             else:
@@ -153,4 +168,4 @@ if st.sidebar.button("Analyze Market & Generate Signal"):
         except Exception as e:
             st.error(f"Data Fetching Error: {e}")
 else:
-    st.info("👈 Sidebar se Category (Equity/FNO/MCX) select karein aur **Analyze Market** button dabayein.")
+    st.info("👈 Left top corner me **>>** arrow par click karke Sidebar kholein, Symbol select karein aur **Analyze Market** button dabayein.")
